@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
       - name: app
-        image: yourdockerhubusername/ci-cd-demo:1.0
+        image: sunil1604/ci-cd-demo:1.0
         ports:
         - containerPort: 3000
 
