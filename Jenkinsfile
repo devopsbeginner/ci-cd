@@ -28,7 +28,7 @@ pipeline {
         
         stage('Push Docker Image') {
             steps {
-                sh "docker login -u <username> -p <password>"
+                sh "docker login -u sunil1604 -p Vsmdevops@123"
                 sh "docker push ${IMAGE_NAME}:${IMAGE_TAG}"
             }
         }
