@@ -26,12 +26,27 @@ pipeline {
             }
         }
         
-        stage('Push Docker Image') {
-            steps {
-                sh "docker login -u sunil1604 -p Vsmdevops@123"
-                sh "docker push ${IMAGE_NAME}:${IMAGE_TAG}"
-            }
+        
+stage('Push Docker Image') {
+    steps {
+        withCredentials([
+            usernamePassword(
+                credentialsId: 'dockerhub-creds',
+                usernameVariable: 'DOCKERHUB_USER',
+                passwordVariable: 'DOCKERHUB_TOKEN'
+            )
+        ]) {
+            sh '''
+                set +x
+                printf '%s' "$DOCKERHUB_TOKEN" |
+                    docker login --username "$DOCKERHUB_USER" --password-stdin
+                docker push "${IMAGE_NAME}:${IMAGE_TAG}"
+                docker logout
+            '''
         }
+    }
+}
+
         
         stage('Deploy to Kubernetes') {
             steps { 
