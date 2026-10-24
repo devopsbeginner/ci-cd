@@ -3,22 +3,25 @@ pipeline {
     agent any
 
     environment {
-        IMAGE_NAME = 'sunil1604/ci-cd-demo'
+        IMAGE_NAME = 'sunil1604/ci-cd-demo-practice'
         IMAGE_TAG = '1.0'
-        KUBECONFIG = '/var/lib/jenkins/.kube/config'
     }
 
     stages {
         stage('Checkout') {
             steps {
-                git branch: 'master',
-                    url: 'https://github.com/devopsbeginner/ci-cd.git'
+                echo 'Source code is checked out by Jenkins SCM.'
             }
         }
 
-        stage('Build & Test') {
+        stage('Install Dependencies') {
             steps {
                 sh 'npm install'
+            }
+        }
+
+        stage('Test Application') {
+            steps {
                 sh 'npm test'
             }
         }
@@ -39,21 +42,32 @@ pipeline {
                     )
                 ]) {
                     sh '''
+                        set -eu
                         set +x
+
                         printf '%s' "$DOCKERHUB_TOKEN" |
-                            docker login --username "$DOCKERHUB_USER" --password-stdin
+                            docker login \
+                                --username "$DOCKERHUB_USER" \
+                                --password-stdin
+
                         docker push "${IMAGE_NAME}:${IMAGE_TAG}"
+
                         docker logout
                     '''
                 }
             }
         }
+    }
 
-        stage('Deploy to Kubernetes') {
-            steps {
-                sh 'kubectl apply --dry-run=client -f deployment.yaml'
-                sh 'kubectl apply --dry-run=client -f service.yaml'
-            }
+    post {
+        always {
+            echo 'Jenkins pipeline execution finished.'
+        }
+        success {
+            echo 'CI/CD pipeline completed successfully.'
+        }
+        failure {
+            echo 'Pipeline failed. Check Console Output for details.'
         }
     }
 }
