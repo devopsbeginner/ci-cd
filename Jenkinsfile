@@ -10,25 +10,40 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                echo 'Source code is checked out by Jenkins SCM.'
+                echo 'Source code checked out by Jenkins SCM.'
             }
         }
 
         stage('Install Dependencies') {
             steps {
-                sh 'npm install'
+                sh '''
+                    docker run --rm \
+                        -v "$WORKSPACE:/app" \
+                        -w /app \
+                        node:24-alpine \
+                        npm install
+                '''
             }
         }
 
         stage('Test Application') {
             steps {
-                sh 'npm test'
+                sh '''
+                    docker run --rm \
+                        -v "$WORKSPACE:/app" \
+                        -w /app \
+                        node:24-alpine \
+                        npm test
+                '''
             }
         }
 
         stage('Build Docker Image') {
             steps {
-                sh 'docker build -t ${IMAGE_NAME}:${IMAGE_TAG} .'
+                sh '''
+                    docker build \
+                        -t ${IMAGE_NAME}:${IMAGE_TAG} .
+                '''
             }
         }
 
@@ -45,14 +60,17 @@ pipeline {
                         set -eu
                         set +x
 
+                        cleanup() {
+                            docker logout >/dev/null 2>&1 || true
+                        }
+                        trap cleanup EXIT
+
                         printf '%s' "$DOCKERHUB_TOKEN" |
                             docker login \
                                 --username "$DOCKERHUB_USER" \
                                 --password-stdin
 
                         docker push "${IMAGE_NAME}:${IMAGE_TAG}"
-
-                        docker logout
                     '''
                 }
             }
@@ -67,7 +85,7 @@ pipeline {
             echo 'CI/CD pipeline completed successfully.'
         }
         failure {
-            echo 'Pipeline failed. Check Console Output for details.'
+            echo 'Pipeline failed. Check Console Output.'
         }
     }
 }
