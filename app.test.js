@@ -5,44 +5,65 @@ const http = require('node:http');
 const { spawn } = require('node:child_process');
 
 test('Express app returns the expected response', async (t) => {
+  const port = 3100;
+
   const app = spawn(process.execPath, ['app.js'], {
-    env: { ...process.env, PORT: '3100' },
-    stdio: 'ignore'
+    env: { ...process.env, PORT: String(port) },
+    stdio: ['ignore', 'pipe', 'pipe']
+  });
+
+  let output = '';
+  app.stdout.on('data', (chunk) => {
+    output += chunk.toString();
+  });
+  app.stderr.on('data', (chunk) => {
+    output += chunk.toString();
   });
 
   t.after(() => {
-    app.kill();
+    if (!app.killed) app.kill();
   });
 
-  try {
-    const response = await new Promise((resolve, reject) => {
-      const request = http.get(
-        'http://127.0.0.1:3100/',
-        (res) => {
-          let body = '';
+  // Wait until the server is ready.
+  const deadline = Date.now() + 5000;
+  let response;
 
-          res.setEncoding('utf8');
-          res.on('data', (chunk) => body += chunk);
-          res.on('end', () => resolve({
-            statusCode: res.statusCode,
-            body
-          }));
-        }
-      );
+  while (Date.now() < deadline) {
+    if (app.exitCode !== null) {
+      throw new Error(`App exited early. Output: ${output}`);
+    }
 
-      request.setTimeout(5000, () => {
-        request.destroy(new Error('Request timed out'));
+    try {
+      response = await new Promise((resolve, reject) => {
+        const request = http.get(
+          `http://127.0.0.1:${port}/`,
+          (res) => {
+            let body = '';
+            res.setEncoding('utf8');
+            res.on('data', (chunk) => body += chunk);
+            res.on('end', () => resolve({
+              statusCode: res.statusCode,
+              body
+            }));
+          }
+        );
+
+        request.setTimeout(500, () => {
+          request.destroy(new Error('Request timed out'));
+        });
+        request.on('error', reject);
       });
 
-      request.on('error', reject);
-    });
-
-    assert.equal(response.statusCode, 200);
-    assert.match(
-      response.body,
-      /Hello World! CI\/CD with Jenkins, Docker, Kubernetes/
-    );
-  } finally {
-    app.kill();
+      break;
+    } catch {
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
   }
+
+  assert.ok(response, `App did not become ready. Output: ${output}`);
+  assert.equal(response.statusCode, 200);
+  assert.equal(
+    response.body,
+    'Hello World! CI/CD with Jenkins, Docker, Kubernetes'
+  );
 });
