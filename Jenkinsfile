@@ -17,6 +17,7 @@ pipeline {
         stage('Install Dependencies') {
             steps {
                 sh '''
+                    set -eu
                     docker run --rm \
                         -v "$WORKSPACE:/app" \
                         -w /app \
@@ -29,6 +30,7 @@ pipeline {
         stage('Test Application') {
             steps {
                 sh '''
+                    set -eu
                     docker run --rm \
                         -v "$WORKSPACE:/app" \
                         -w /app \
@@ -41,8 +43,9 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 sh '''
+                    set -eu
                     docker build \
-                        -t ${IMAGE_NAME}:${IMAGE_TAG} .
+                        -t "${IMAGE_NAME}:${IMAGE_TAG}" .
                 '''
             }
         }
@@ -60,8 +63,12 @@ pipeline {
                         set -eu
                         set +x
 
+                        DOCKER_CONFIG="$(mktemp -d)"
+                        export DOCKER_CONFIG
+
                         cleanup() {
                             docker logout >/dev/null 2>&1 || true
+                            rm -rf "$DOCKER_CONFIG"
                         }
                         trap cleanup EXIT
 
@@ -76,20 +83,19 @@ pipeline {
             }
         }
     }
-    
-    
-post {
-    always {
-        echo "Pipeline finished with status: ${currentBuild.currentResult}"
-    }
 
-    success {
-        echo 'CI/CD pipeline completed successfully.'
+    post {
+        always {
+            echo "Pipeline finished with status: ${currentBuild.currentResult}"
+        }
 
-        emailext(
-            to: 'podalakurusunil@gmail.com',
-            subject: "SUCCESS: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
-            body: """The Jenkins CI/CD pipeline succeeded.
+        success {
+            echo 'CI/CD pipeline completed successfully.'
+
+            emailext(
+                to: 'podalakurusunil@gmail.com',
+                subject: "SUCCESS: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
+                body: """The Jenkins CI/CD pipeline succeeded.
 
 Job: ${env.JOB_NAME}
 Build: #${env.BUILD_NUMBER}
@@ -97,16 +103,16 @@ Status: ${currentBuild.currentResult}
 
 Console output:
 ${env.BUILD_URL}console"""
-        )
-    }
+            )
+        }
 
-    failure {
-        echo 'Pipeline failed. Check Console Output.'
+        failure {
+            echo 'Pipeline failed. Check Console Output.'
 
-        emailext(
-            to: 'podalakurusunil@gmail.com',
-            subject: "FAILURE: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
-            body: """The Jenkins CI/CD pipeline failed.
+            emailext(
+                to: 'podalakurusunil@gmail.com',
+                subject: "FAILURE: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
+                body: """The Jenkins CI/CD pipeline failed.
 
 Job: ${env.JOB_NAME}
 Build: #${env.BUILD_NUMBER}
@@ -114,8 +120,7 @@ Status: ${currentBuild.currentResult}
 
 Please investigate the failure:
 ${env.BUILD_URL}console"""
-        )
+            )
+        }
     }
-}
-    
 }
