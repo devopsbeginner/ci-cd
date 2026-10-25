@@ -4,7 +4,7 @@
   "main": "app.js",
   "scripts": {
     "start": "node app.js",
-    "test": "echo \"No tests yet\""
+    "test": "node --test"
   },
   "dependencies": {
     "express": "^4.18.2"
