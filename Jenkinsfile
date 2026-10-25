@@ -76,16 +76,46 @@ pipeline {
             }
         }
     }
-
-    post {
-        always {
-            echo 'Jenkins pipeline execution finished.'
-        }
-        success {
-            echo 'CI/CD pipeline completed successfully.'
-        }
-        failure {
-            echo 'Pipeline failed. Check Console Output.'
-        }
+    
+    
+post {
+    always {
+        echo "Pipeline finished with status: ${currentBuild.currentResult}"
     }
+
+    success {
+        echo 'CI/CD pipeline completed successfully.'
+
+        emailext(
+            to: 'podalakurusunil@gmail.com',
+            subject: "SUCCESS: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
+            body: """The Jenkins CI/CD pipeline succeeded.
+
+Job: ${env.JOB_NAME}
+Build: #${env.BUILD_NUMBER}
+Status: ${currentBuild.currentResult}
+
+Console output:
+${env.BUILD_URL}console"""
+        )
+    }
+
+    failure {
+        echo 'Pipeline failed. Check Console Output.'
+
+        emailext(
+            to: 'podalakurusunil@gmail.com',
+            subject: "FAILURE: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
+            body: """The Jenkins CI/CD pipeline failed.
+
+Job: ${env.JOB_NAME}
+Build: #${env.BUILD_NUMBER}
+Status: ${currentBuild.currentResult}
+
+Please investigate the failure:
+${env.BUILD_URL}console"""
+        )
+    }
+}
+    
 }
