@@ -4,7 +4,7 @@ pipeline {
 
     environment {
         IMAGE_NAME = 'sunil1604/ci-cd-demo-practice'
-        IMAGE_TAG = '1.0'
+        IMAGE_TAG = "${BUILD_NUMBER}"
     }
 
     stages {
